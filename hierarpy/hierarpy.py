@@ -3,13 +3,22 @@ import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 from collections import defaultdict
+from scipy.stats import chi2
 
 
 # Including a mini testing dataframe here:
-d = pd.DataFrame({'Winner': {0: 'A', 1: 'A', 2: 'B', 3: 'A',
-                             4: 'C', 5: 'B', 6: 'C'},
-                  'Loser': {0: 'B', 1: 'C', 2: 'A', 3: 'C',
-                            4: 'D', 5: 'C', 6: 'D'}})
+d1 = pd.DataFrame({'Winner': {0: 'A', 1: 'A', 2: 'B', 3: 'A',
+                              4: 'C', 5: 'B', 6: 'C'},
+                   'Loser': {0: 'B', 1: 'C', 2: 'A', 3: 'C',
+                             4: 'D', 5: 'C', 6: 'D'}})
+
+# Example B in devries
+d2 = pd.DataFrame({'Winner': list('AAAAABBBBBCCCCDDDEEFG'),
+                   'Loser': list('BCDEFCDEFGDEFGEFGFGGA')})
+
+# Example C in devries
+d3 = pd.DataFrame({'Winner': list('AAAAAABBBBBCCCCDDDEFG'),
+                   'Loser':  list('BCDEFGCDEFGDEFGEFGFGE')})
 
 
 def matrix_from_dataframe(interaction_df):
@@ -33,6 +42,46 @@ def preprocess(interaction_mat):
     return (np.clip(interaction_mat-interaction_mat.T,
                     a_min=0, a_max=np.inf)
             .astype(int))
+
+
+def linearity_k(interaction_matrix):
+    """
+    Appleby/Kendall's Test of linearity
+    Returns K value and p value (p needs work!!)
+    """
+    # Working on Linearity: Below, the K works, p-values need some work
+    N = len(interaction_matrix)
+    # Find known relationships
+    mat_mask = interaction_matrix.mask((interaction_matrix.values == 0) &
+                                       (interaction_matrix.values.T == 0))
+    # Set dominant to 1
+    mat_mask[mat_mask > mat_mask.T] = 1
+    # Set unknowns to 0.5
+    mat_mask[np.isnan(mat_mask)] = 0.5
+    # Get rid of diagonals
+    np.fill_diagonal(mat_mask.values, np.nan)
+    # Get row sums
+    S = mat_mask.sum(1)
+    # Get number of circular Triads
+    d = ((N*(N-1)*(2*N-1))/12) - (0.5*sum(S**2))
+
+    if N < 10:
+        # For small sample sizes, must refer to Appleby paper for now for p-values
+        pAppleby = 'Not yet implemented for small samples,Please refer to Appleby 1983, page 603 for a p value'
+    else:
+        # For larger samples: Approximate chi**2
+        _df = (N*(N-1)*(N-2)/((N-4)**2))
+        chi = (8/(N-4))*((N*(N-1)*(N-2))/24-(d+0.5))+_df
+        pAppleby = 1-chi2.pdf(chi, _df)
+
+    # Maximum number of circular Triads (Kendall 1962) for odd and even N
+    if N % 2 == 1:
+        maxd = (N**3-N)/24
+    else:
+        maxd = (N**3-4*N)/24
+
+    K = 1-d/maxd
+    return (K, pAppleby)
 
 
 def run_ADAGIO(interaction_matrix, preprocess_data=True, plot=False):
