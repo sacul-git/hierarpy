@@ -6,21 +6,6 @@ from collections import defaultdict
 from scipy.stats import chi2
 
 
-# Including a mini testing dataframe here:
-d1 = pd.DataFrame({'Winner': {0: 'A', 1: 'A', 2: 'B', 3: 'A',
-                              4: 'C', 5: 'B', 6: 'C'},
-                   'Loser': {0: 'B', 1: 'C', 2: 'A', 3: 'C',
-                             4: 'D', 5: 'C', 6: 'D'}})
-
-# Example B in devries
-d2 = pd.DataFrame({'Winner': list('AAAAABBBBBCCCCDDDEEFG'),
-                   'Loser': list('BCDEFCDEFGDEFGEFGFGGA')})
-
-# Example C in devries
-d3 = pd.DataFrame({'Winner': list('AAAAAABBBBBCCCCDDDEFG'),
-                   'Loser':  list('BCDEFGCDEFGDEFGEFGFGE')})
-
-
 def matrix_from_dataframe(interaction_df):
     """
     Take an interactions dataframe with 2 columns (Winner, Loser), 
@@ -36,7 +21,7 @@ def matrix_from_dataframe(interaction_df):
 
 def preprocess(interaction_mat):
     """
-    Take matrix of interactions, and subtract bi-directional interactions
+    Take matrix of interactions, and subtract bi-directional interactions.
     This is useful for ADAGIO
     """
     return (np.clip(interaction_mat-interaction_mat.T,
@@ -47,7 +32,7 @@ def preprocess(interaction_mat):
 def linearity_k(interaction_matrix):
     """
     Appleby/Kendall's Test of linearity
-    Returns K value and p value (p needs work!!)
+    Returns K value and p value (p needs work for small samples)
     """
     # Working on Linearity: Below, the K works, p-values need some work
     N = len(interaction_matrix)
@@ -67,7 +52,8 @@ def linearity_k(interaction_matrix):
 
     if N < 10:
         # For small sample sizes, must refer to Appleby paper for now for p-values
-        pAppleby = 'Not yet implemented for small samples,Please refer to Appleby 1983, page 603 for a p value'
+        pAppleby = '''Not yet implemented for small samples,
+        Please refer to Appleby 1983, page 603 for a p value'''
     else:
         # For larger samples: Approximate chi**2
         _df = (N*(N-1)*(N-2)/((N-4)**2))
@@ -85,6 +71,12 @@ def linearity_k(interaction_matrix):
 
 
 def run_ADAGIO(interaction_matrix, preprocess_data=True, plot=False):
+    '''
+    Takes interaction matrix, returns nodes and edges from ADAGIO 
+    option to plot resulting network
+    See Douglas et al. 2017 for description of pre-processing, and when to use it
+    '''
+    # for plotting
     def plot_graph(graph, edges, labels=False):
         pos = nx.circular_layout(graph)
         plt.cla()
@@ -94,6 +86,7 @@ def run_ADAGIO(interaction_matrix, preprocess_data=True, plot=False):
         if labels:
             nx.draw_networkx_edge_labels(edges, pos=pos)
         plt.axis('off')
+    # preprocess data or not (subtract bi-directional interactions)
     if preprocess_data:
         interaction_matrix = preprocess(interaction_matrix)
     # Transform matrix into useable dataframe for nx:
@@ -149,6 +142,9 @@ def run_ADAGIO(interaction_matrix, preprocess_data=True, plot=False):
 
 
 def rank_from_graph(nodes, edges, method='bottom_up'):
+    '''
+    Takes the nodes and edges from run_ADAGIO, returns ranks
+    '''
     inds = [i for i in nodes]
     rank_data = {'ind': inds, 'adagio_rank': [0] * len(inds)}
     rank_df = pd.DataFrame(rank_data)
