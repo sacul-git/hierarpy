@@ -6,12 +6,16 @@ from collections import defaultdict
 from scipy.stats import chi2
 
 
-def matrix_from_dataframe(interaction_df):
+def matrix_from_dataframe(interaction_df, Winner='Winner', Loser='Loser'):
     """
-    Take an interactions dataframe with 2 columns (Winner, Loser), 
+    Take an interactions dataframe with 2 columns (Winner, Loser) 
     and turn it into a matrix of interactions
+    Arguments:
+    interaction_df: a pandas dataframe comprising one row per interaction
+    Winner (type=str): Name of column of interaction_df containing interaction winners
+    Loser (type=str): Name of column of interaction_df containing interaction losers
     """
-    mat = pd.crosstab(interaction_df['Winner'], interaction_df['Loser'])
+    mat = pd.crosstab(interaction_df[Winner], interaction_df[Loser])
     # Make sure the matrix is symmetric
     inds = sorted(set(list(mat)).union(mat.index))
     mat = mat.reindex(inds, fill_value=0)
@@ -83,7 +87,7 @@ def run_ADAGIO(interaction_matrix, preprocess_data=True, plot=False):
         nx.draw_networkx_nodes(graph, pos=pos)
         nx.draw_networkx_labels(graph, pos=pos)
         nx.draw_networkx_edges(edges, pos=pos)
-        if labels:
+        if not labels:
             nx.draw_networkx_edge_labels(edges, pos=pos)
         plt.axis('off')
     # preprocess data or not (subtract bi-directional interactions)
@@ -137,6 +141,7 @@ def run_ADAGIO(interaction_matrix, preprocess_data=True, plot=False):
         fig.add_subplot(122)
         plot_graph(H, H_edges, labels=True)
         plt.title('Graph with ADAGIO')
+        plt.savefig('ADAGIO_graph.png')
         plt.show()
     return H, H_edges
 
@@ -224,19 +229,19 @@ def david_ranks(interaction_matrix):
     return david_ranks
 
 
-def elo_ranks(interaction_dataframe, k=100):
+def elo_ranks(interaction_dataframe, Winner='Winner', Loser='Loser', k=100):
     """
     Needs some serious refactoring!!
     """
     def elo_logi(diff):
         return(1-(1/(1+10**(diff/400))))
-    inds = np.unique(d[['Winner', 'Loser']].values.flatten())
+    inds = np.unique(interaction_dataframe[[Winner, Loser]].values.flatten())
     #
     elo_df = pd.DataFrame(inds, columns=['ind']).assign(
         elo_score=1000).sort_values('ind')
     for i in range(len(interaction_dataframe)):
         row = interaction_dataframe.iloc[i]
-        a, b = row['Winner'], row['Loser']
+        a, b = row[Winner], row[Loser]
         if (a in inds) & (b in inds):
             a_score = elo_df.loc[elo_df['ind'] == a, 'elo_score'].iloc[0]
             b_score = elo_df.loc[elo_df['ind'] == b, 'elo_score'].iloc[0]
