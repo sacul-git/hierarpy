@@ -17,11 +17,10 @@ import pandas as pd
 import hierarpy as hp
 ```
 
-Load an example dataframe
+Load an example dataframe (provided in `hierarpy/test_dfs`)
 
 ```python
-import pandas as pd
-import hierarpy as hp
+df = pd.read_csv('test_dfs/df1.csv')
 ```
 
 This dataframe looks like the following:
